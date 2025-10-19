@@ -50,7 +50,7 @@
         }
 
         .header-logo {
-            height: 40px;
+            height: 32px;
             width: auto;
         }
 
@@ -67,6 +67,57 @@
 
         .menu-button:hover {
             background: rgba(255, 255, 255, 0.1);
+        }
+
+        .menu-dropdown {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            background: rgba(0, 0, 0, 0.95);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            min-width: 160px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            z-index: 1001;
+            opacity: 0;
+            transform: translateY(-10px);
+            transition: all 0.3s ease;
+            pointer-events: none;
+        }
+
+        .menu-dropdown.show {
+            opacity: 1;
+            transform: translateY(0);
+            pointer-events: auto;
+        }
+
+        .menu-item {
+            padding: 12px 16px;
+            color: #fff;
+            text-decoration: none;
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            transition: background-color 0.3s ease;
+            cursor: pointer;
+        }
+
+        .menu-item:hover {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .menu-item:first-child {
+            border-radius: 12px 12px 0 0;
+        }
+
+        .menu-item:last-child {
+            border-radius: 0 0 12px 12px;
+        }
+
+        .menu-wrapper {
+            position: relative;
         }
 
         .menu-dots {
@@ -193,7 +244,7 @@
 
         .card-number {
             font-size: 16px;
-            font-weight: 300;
+            font-weight: 600;
             letter-spacing: 2px;
             margin: 15px 0;
             font-family: 'Courier New', monospace;
@@ -298,7 +349,7 @@
         }
 
         .all-button {
-            background: #333;
+            background: transparent;
             color: #fff;
             border: none;
             border-radius: 8px;
@@ -310,7 +361,7 @@
         }
 
         .all-button:hover {
-            background: #444;
+            background: rgba(255, 255, 255, 0.1);
         }
 
         .pin-modal {
@@ -571,13 +622,18 @@
 <body>
     <div class="header">
         <img src="https://i.imgur.com/GXx5W1w.png" alt="Logo" class="header-logo">
-        <button class="menu-button">
-            <div class="menu-dots">
-                <div class="menu-dot"></div>
-                <div class="menu-dot"></div>
-                <div class="menu-dot"></div>
+        <div class="menu-wrapper">
+            <button class="menu-button" onclick="toggleMenu()">
+                <div class="menu-dots">
+                    <div class="menu-dot"></div>
+                    <div class="menu-dot"></div>
+                    <div class="menu-dot"></div>
+                </div>
+            </button>
+            <div class="menu-dropdown" id="menuDropdown">
+                <div class="menu-item" onclick="openSettings()">Configurações</div>
             </div>
-        </button>
+        </div>
     </div>
 
     <div class="wallet-container">
@@ -685,6 +741,25 @@
 
         let cardIdCounter = 2;
         let currentPin = '';
+
+        // Funções do Menu
+        function toggleMenu() {
+            const dropdown = document.getElementById('menuDropdown');
+            dropdown.classList.toggle('show');
+        }
+
+        function openSettings() {
+            showToast('Configurações em desenvolvimento');
+            toggleMenu(); // Fecha o menu
+        }
+
+        // Fechar menu ao clicar fora
+        document.addEventListener('click', function(e) {
+            const menuWrapper = e.target.closest('.menu-wrapper');
+            if (!menuWrapper) {
+                document.getElementById('menuDropdown').classList.remove('show');
+            }
+        });
 
         // Funções PIN
         function openPinModal() {
