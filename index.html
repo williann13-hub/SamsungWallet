@@ -637,7 +637,7 @@
         </div>
     </div>
 
-    <div class="wallet-container">
+    <div class="wallet-container" id="walletContainer">
         <div class="cards-stack" id="cardsStack">
             <!-- Cards serão inseridos aqui dinamicamente -->
         </div>
@@ -821,6 +821,7 @@
             const cardDiv = document.createElement('div');
             cardDiv.className = `card ${card.type}-card slide-in`;
             cardDiv.style.animationDelay = `${index * 0.1}s`;
+            cardDiv.setAttribute('data-card-id', card.id);
             
             cardDiv.innerHTML = `
                 <div class="card-front">
@@ -844,89 +845,129 @@
                 </div>
             `;
 
-            // Variáveis para controlar o arraste
-            let isDragging = false;
-            let startY = 0;
-            let currentY = 0;
+            // Timer para toque longo no cartão (remover cartão)
             let touchTimer;
-
-            // Eventos de mouse (desktop)
-            cardDiv.addEventListener('mousedown', function(e) {
-                e.preventDefault();
-                isDragging = true;
-                startY = e.clientY;
-                this.classList.add('dragging');
-                document.addEventListener('mousemove', onMouseMove);
-                document.addEventListener('mouseup', onMouseUp);
-            });
-
-            // Eventos de touch (mobile)
             cardDiv.addEventListener('touchstart', function(e) {
-                startY = e.touches[0].clientY;
-                
-                // Timer para toque longo (remover cartão)
+                e.stopPropagation(); // Impede que o evento bubble para o container
                 touchTimer = setTimeout(() => {
                     if (!isDragging && confirm('Deseja remover este cartão?')) {
                         removeCard(card.id);
                     }
                 }, 800);
-            });
-
-            cardDiv.addEventListener('touchmove', function(e) {
-                clearTimeout(touchTimer); // Cancela o toque longo se começar a arrastar
-                
-                if (!isDragging) {
-                    isDragging = true;
-                    this.classList.add('dragging');
-                }
-                
-                currentY = e.touches[0].clientY;
-                const deltaY = currentY - startY;
-                
-                // Só permite arrastar para baixo
-                if (deltaY > 0) {
-                    this.style.transform = `translateY(${deltaY}px)`;
-                }
-                
-                e.preventDefault();
+                // Armazenar o timer globalmente para poder cancelá-lo
+                globalTouchTimer = touchTimer;
             });
 
             cardDiv.addEventListener('touchend', function(e) {
                 clearTimeout(touchTimer);
+                globalTouchTimer = null;
+            });
+
+            cardDiv.addEventListener('touchmove', function(e) {
+                clearTimeout(touchTimer);
+                globalTouchTimer = null;
+            });
+
+            return cardDiv;
+        }
+
+        // Variáveis globais para controle de arraste
+        let isDragging = false;
+        let startY = 0;
+        let currentY = 0;
+        let draggedCard = null;
+        let globalTouchTimer = null;
+
+        // Adicionar eventos de arraste para toda a área
+        function setupGlobalDragEvents() {
+            const walletContainer = document.getElementById('walletContainer');
+            
+            // Eventos de mouse (desktop)
+            walletContainer.addEventListener('mousedown', function(e) {
+                // Não arrastar se clicou em botões ou modais
+                if (e.target.closest('.pin-button, .add-card-btn, .menu-button, .modal, .pin-modal')) {
+                    return;
+                }
                 
+                e.preventDefault();
+                startDrag(e.clientY);
+            });
+
+            document.addEventListener('mousemove', function(e) {
                 if (isDragging) {
-                    isDragging = false;
-                    this.classList.remove('dragging');
-                    
-                    // Volta ao lugar original com animação suave
-                    this.style.transform = 'translateY(0px)';
+                    continueDrag(e.clientY);
                 }
             });
 
-            function onMouseMove(e) {
-                if (!isDragging) return;
-                currentY = e.clientY;
-                const deltaY = currentY - startY;
-                
-                // Só permite arrastar para baixo
-                if (deltaY > 0) {
-                    cardDiv.style.transform = `translateY(${deltaY}px)`;
+            document.addEventListener('mouseup', function(e) {
+                if (isDragging) {
+                    endDrag();
                 }
-            }
+            });
 
-            function onMouseUp(e) {
-                if (!isDragging) return;
-                isDragging = false;
-                cardDiv.classList.remove('dragging');
+            // Eventos de touch (mobile)
+            walletContainer.addEventListener('touchstart', function(e) {
+                // Não arrastar se clicou em botões ou modais
+                if (e.target.closest('.pin-button, .add-card-btn, .menu-button, .modal, .pin-modal')) {
+                    return;
+                }
                 
-                // Volta ao lugar original
-                cardDiv.style.transform = 'translateY(0px)';
-                
-                document.removeEventListener('mousemove', onMouseMove);
-                document.removeEventListener('mouseup', onMouseUp);
-            }
+                startDrag(e.touches[0].clientY);
+            });
 
-            return cardDiv;
+            walletContainer.addEventListener('touchmove', function(e) {
+                if (isDragging) {
+                    continueDrag(e.touches[0].clientY);
+                    e.preventDefault();
+                }
+            });
+
+            walletContainer.addEventListener('touchend', function(e) {
+                if (isDragging) {
+                    endDrag();
+                }
+            });
+        }
+
+        function startDrag(y) {
+            // Cancelar qualquer timer de toque longo ativo
+            if (globalTouchTimer) {
+                clearTimeout(globalTouchTimer);
+                globalTouchTimer = null;
+            }
+            
+            isDragging = true;
+            startY = y;
+            
+            // Pegar o primeiro cartão (cartão do topo)
+            const firstCard = document.querySelector('.card');
+            if (firstCard) {
+                draggedCard = firstCard;
+                draggedCard.classList.add('dragging');
+            }
+        }
+
+        function continueDrag(y) {
+            if (!draggedCard) return;
+            
+            currentY = y;
+            const deltaY = currentY - startY;
+            
+            // Só permite arrastar para baixo
+            if (deltaY > 0) {
+                draggedCard.style.transform = `translateY(${deltaY}px)`;
+            }
+        }
+
+        function endDrag() {
+            if (!draggedCard) return;
+            
+            isDragging = false;
+            draggedCard.classList.remove('dragging');
+            
+            // Volta ao lugar original com animação suave
+            draggedCard.style.transform = 'translateY(0px)';
+            draggedCard = null;
         }
 
         // Obter logo da marca do cartão
@@ -1087,6 +1128,7 @@
         // Inicializar aplicação
         document.addEventListener('DOMContentLoaded', function() {
             renderCards();
+            setupGlobalDragEvents();
         });
 
         // Prevenir zoom no iOS
